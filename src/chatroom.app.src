@@ -1,0 +1,32 @@
+{application, chatroom,
+ [{description, "OTP chatroom"},
+  {vsn, "0.1.0"},
+  {registered, [
+      chatroom_listener_sup,
+      chatroom_sup,
+      chatroom_worker_sup
+  ]},
+  {mod, { chatroom_app, []}},
+  {applications,
+   [kernel,
+    stdlib,
+    lager
+   ]},
+  {env,[
+      {port, 3000}
+  ]},
+  {modules, [
+      chatroom_accept_fsm,
+      chatroom_app,
+      chatroom_listener_sup,
+      chatroom_sup,
+      chatroom_worker_gen,
+      chatroom_worker_sup,
+      chatroom_worker_fms
+  ]},
+  {maintainers,
+      ["Christopher Lillthors"]
+  },
+  {licenses, ["MIT"]},
+  {links, []}
+ ]}.
