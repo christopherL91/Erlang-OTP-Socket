@@ -34,6 +34,7 @@
 %% @end
 %%--------------------------------------------------------------------
 start(_StartType, _StartArgs) ->
+    pg2:create(clients),
     case chatroom_sup:start_link() of
         {ok, Pid} ->
             {ok, Pid};

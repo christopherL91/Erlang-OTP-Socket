@@ -56,9 +56,9 @@ start_link(Socket) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Socket]) ->
-    process_flag(trap_exit, true),
-    gen_server:cast(self(), startup),
-    {ok, #state{socket = Socket}}.
+    pg2:join(clients, self()),
+    Pid = chatroom_worker_fms:start_link(1234),
+    {ok, #state{socket = Socket, fms = Pid}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -88,13 +88,6 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-
-handle_cast(startup, State) ->
-    E = chatroom_worker_fms:start_link(),
-    io:format("New PID: ~p~n", [E]),
-    {noreply, State};
-    %{noreply, State#state{fms = Pid}};
-
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -109,9 +102,14 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 
+handle_info({broadcast, Msg}, #state{socket = Socket} = State) ->
+    io:format("Broadcast: ~p~n", [Msg]),
+    send(Socket, Msg),
+    {noreply, State};
+
 handle_info({tcp, Socket, Data}, State) ->
-    io:format("~p~n", [Data]),
-    send(Socket, Data),
+    inet:setopts(Socket, [{active, once}, {packet, line}]),
+    broadcast(Data),
     {noreply, State};
 
 handle_info({tcp_closed, _Socket}, State) ->
@@ -138,7 +136,7 @@ handle_info(Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{socket = Socket}) ->
-    io:format("Terminated...~n"),
+    io:format("Terminated gen_server...~n"),
     gen_tcp:close(Socket),
     ok.
 
@@ -165,6 +163,13 @@ code_change(_OldVsn, State, _Extra) ->
 %% @spec send(Socket, Data) -> ok,
 %% @end
 %%--------------------------------------------------------------------
+
+broadcast(Msg) ->
+    Pids = pg2:get_members(clients),
+    lists:foreach(fun(Pid) ->
+                          Pid ! {broadcast, Msg}
+                  end, Pids).
+
 send(Socket, Data) ->
     case gen_tcp:send(Socket, Data) of
         {error, timeout} ->
