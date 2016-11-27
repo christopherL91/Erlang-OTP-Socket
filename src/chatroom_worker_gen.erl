@@ -57,8 +57,8 @@ start_link(Socket) ->
 %%--------------------------------------------------------------------
 init([Socket]) ->
     pg2:join(clients, self()),
-    Pid = chatroom_worker_fms:start_link(1234),
-    {ok, #state{socket = Socket, fms = Pid}}.
+    {ok, Fms} = chatroom_worker_fms:start_link("1234"),
+    {ok, #state{socket = Socket, fms = Fms}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -109,7 +109,18 @@ handle_info({broadcast, Msg}, #state{socket = Socket} = State) ->
 
 handle_info({tcp, Socket, Data}, State) ->
     inet:setopts(Socket, [{active, once}, {packet, line}]),
-    broadcast(Data),
+    D = utils:remove_newlines(Data),
+    io:format("[Server]: Got ~p~n", [D]),
+    case string:tokens(D, " ") of
+        ["button", Arg] ->
+        Fms = State#state.fms,
+        gen_statem:cast(Fms, {button, Arg});
+        ["broadcast", Message] ->
+            Str = io_lib:format("~s~n", [Message]),
+            broadcast(Str);
+        _ ->
+            io:format("Invalid data format~n")
+    end,
     {noreply, State};
 
 handle_info({tcp_closed, _Socket}, State) ->

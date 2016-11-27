@@ -1,0 +1,4 @@
+%% encoding: UTF-8
+{application,chatroom}.
+{modules,[chatroom_app,chatroom_listener_sup,chatroom_sup,chatroom_worker_sup,
+          utils]}.
